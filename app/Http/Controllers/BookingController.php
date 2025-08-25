@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Carbon; 
+use Illuminate\Support\Carbon;
 
 class BookingController extends Controller
 {
@@ -30,6 +30,7 @@ class BookingController extends Controller
         }
 
         $bookings = $query->latest()->get();
+
         return view('bookings.index', [
             'bookings' => $bookings,
             'users' => $users,
@@ -48,20 +49,15 @@ class BookingController extends Controller
     {
         $isAdmin = Auth::user()->role === 'admin';
 
-        // --- AWAL PERUBAHAN ---
         $validated = $request->validate([
             'room_id' => 'required|exists:rooms,id',
             'user_id' => $isAdmin ? 'required|exists:users,id' : 'nullable',
             'start_time' => 'required|date|after_or_equal:now',
             'end_time' => [
-                'required',
-                'date',
-                'after:start_time',
-                // Logika custom untuk validasi durasi minimal 24 jam
+                'required', 'date', 'after:start_time',
                 function ($attribute, $value, $fail) use ($request) {
                     $startTime = Carbon::parse($request->input('start_time'));
                     $endTime = Carbon::parse($value);
-
                     if ($startTime->diffInHours($endTime) < 24) {
                         $fail('The minimum booking duration is 24 hours.');
                     }
@@ -69,11 +65,21 @@ class BookingController extends Controller
             ],
             'payment_proof' => 'required|image|max:2048',
         ]);
-        // --- AKHIR PERUBAHAN ---
-
+        
         if (Booking::where('room_id', $validated['room_id'])->where(fn($q) => $q->where('start_time', '<', $validated['end_time'])->where('end_time', '>', $validated['start_time']))->exists()) {
             throw ValidationException::withMessages(['start_time' => 'The selected time slot is not available.']);
         }
+
+        $room = Room::findOrFail($validated['room_id']);
+        $startTime = Carbon::parse($validated['start_time']);
+        $endTime = Carbon::parse($validated['end_time']);
+        
+        $numberOfDays = $startTime->diffInDays($endTime);
+        if ($startTime->diffInMinutes($endTime) % (24 * 60) > 0) {
+            $numberOfDays++;
+        }
+        $numberOfDays = max(1, $numberOfDays);
+        $totalPrice = $room->price * $numberOfDays;
 
         $path = $request->file('payment_proof')->store('payment_proofs', 'public');
 
@@ -84,6 +90,7 @@ class BookingController extends Controller
             'end_time' => $validated['end_time'],
             'payment_proof_path' => $path,
             'status' => 'pending',
+            'total_price' => $totalPrice,
         ]);
 
         return redirect()->route('bookings.index')->with('success', 'Booking created successfully and is now pending for verification.');
@@ -100,53 +107,11 @@ class BookingController extends Controller
         $booking->update(['status' => $request->status]);
         return redirect()->route('bookings.index')->with('success', 'Booking status has been updated.');
     }
-    
-    // Kita biarkan fungsi edit dan destroy, dengan asumsi alur edit mungkin diperlukan nanti
-    public function edit(Booking $booking)
-    {
-        if (Auth::user()->cannot('update', $booking)) { abort(403); }
-        $rooms = Room::all();
-        return view('bookings.edit', compact('booking', 'rooms'));
-    }
-
-    public function update(Request $request, Booking $booking)
-    {
-        if (Auth::user()->cannot('update', $booking)) { abort(403); }
-
-        // --- AWAL PERUBAHAN ---
-        $validated = $request->validate([
-            'room_id' => 'required|exists:rooms,id',
-            'start_time' => 'required|date',
-            'end_time' => [
-                'required',
-                'date',
-                'after:start_time',
-                // Logika custom untuk validasi durasi minimal 24 jam
-                function ($attribute, $value, $fail) use ($request) {
-                    $startTime = Carbon::parse($request->input('start_time'));
-                    $endTime = Carbon::parse($value);
-
-                    if ($startTime->diffInHours($endTime) < 24) {
-                        $fail('The minimum booking duration is 24 hours.');
-                    }
-                },
-            ],
-        ]);
-        // --- AKHIR PERUBAHAN ---
-
-        if (Booking::where('room_id', $validated['room_id'])->where('id', '!=', $booking->id)->where(fn($q) => $q->where('start_time', '<', $validated['end_time'])->where('end_time', '>', $validated['start_time']))->exists()) {
-            throw ValidationException::withMessages(['start_time' => 'The selected time slot is not available.']);
-        }
-
-        $booking->update($validated);
-        return redirect()->route('bookings.index')->with('success', 'Booking updated successfully.');
-    }
-
 
     public function destroy(Booking $booking)
     {
         if (Auth::user()->cannot('delete', $booking)) { abort(403); }
-        // Sebaiknya, user hanya boleh cancel jika statusnya belum dikonfirmasi
+
         if ($booking->status !== 'pending' && Auth::user()->role !== 'admin') {
             return redirect()->route('bookings.index')->withErrors('Confirmed booking cannot be canceled.');
         }
