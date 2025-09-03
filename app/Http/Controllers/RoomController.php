@@ -26,7 +26,7 @@ class RoomController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created resource in storage.nyimpan data(create)
      */
     public function store(Request $request)
     {
@@ -48,7 +48,7 @@ class RoomController extends Controller
         // Hapus key 'photo' dari array karena tidak ada kolomnya di database
         unset($validatedData['photo']);
 
-        // Buat record baru di database HANYA dengan data yang relevan
+        // Buat record baru di database HANYA dengan data yang relevan,menampilkan formc
         Room::create($validatedData);
 
         return redirect()->route('rooms.index')->with('success', 'Room created successfully.');
@@ -56,8 +56,9 @@ class RoomController extends Controller
 
     /**
      * Display the specified resource.
-     * (Kita tidak menggunakan halaman detail, jadi bisa dikosongkan atau redirect)
+     * ( tidak menggunakan halaman detail, jadi bisa dikosongkan atau redirect),show untuk detail spesifik harus tunggal
      */
+
     public function show(Room $room)
     {
         return redirect()->route('rooms.index');
@@ -72,7 +73,7 @@ class RoomController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified resource in storage.nyimpan dt jg
      */
     public function update(Request $request, Room $room)
     {
