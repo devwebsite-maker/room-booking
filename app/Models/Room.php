@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model; 
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes; // <-- Tambahkan ini
 
 class Room extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes; // <-- Tambahkan ini
 
     /**
      * The attributes that aren't mass assignable.

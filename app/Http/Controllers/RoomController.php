@@ -13,8 +13,13 @@ class RoomController extends Controller
      */
     public function index()
     {
-        $rooms = Room::latest()->get();
-        return view('admin.rooms.index', compact('rooms'));
+        // Ambil data aktif (yang tidak di-soft-delete)
+        $activeRooms = Room::latest()->get();
+
+        // Ambil HANYA data yang ada di "tong sampah"
+        $trashedRooms = Room::onlyTrashed()->latest()->get();
+
+        return view('admin.rooms.index', compact('activeRooms', 'trashedRooms'));
     }
 
     /**
@@ -26,11 +31,10 @@ class RoomController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.nyimpan data(create)
+     * Store a newly created resource in storage.
      */
     public function store(Request $request)
     {
-        // Validasi semua input dari form
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -38,30 +42,23 @@ class RoomController extends Controller
             'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Proses file upload dan simpan path-nya
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('room_photos', 'public');
-            // Tambahkan path ke data yang akan disimpan, tapi di kolom 'photo_path'
             $validatedData['photo_path'] = $path;
         }
 
-        // Hapus key 'photo' dari array karena tidak ada kolomnya di database
         unset($validatedData['photo']);
-
-        // Buat record baru di database HANYA dengan data yang relevan,menampilkan formc
         Room::create($validatedData);
 
-        return redirect()->route('rooms.index')->with('success', 'Room created successfully.');
+        return redirect()->route('admin.rooms.index')->with('success', 'Room created successfully.');
     }
 
     /**
      * Display the specified resource.
-     * ( tidak menggunakan halaman detail, jadi bisa dikosongkan atau redirect),show untuk detail spesifik harus tunggal
      */
-
     public function show(Room $room)
     {
-        return redirect()->route('rooms.index');
+        return redirect()->route('admin.rooms.index');
     }
 
     /**
@@ -73,37 +70,29 @@ class RoomController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.nyimpan dt jg
+     * Update the specified resource in storage.
      */
     public function update(Request $request, Room $room)
     {
-        // Validasi semua input dari form
         $validatedData = $request->validate([
-            'name' => 'required|string|max:25Selesai! Dengan mengganti seluruh isi file `RoomController.php` dengan kode di atas, masalah Anda saat menambahkan dan mengedit ruangan akan teratasi.255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // nullable karena foto tidak wajib diubah
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Jika ada file foto baru yang di-upload
         if ($request->hasFile('photo')) {
-            // Hapus foto lama jika ada
             if ($room->photo_path) {
                 Storage::disk('public')->delete($room->photo_path);
             }
-            // Simpan foto baru dan dapatkan path-nya
             $path = $request->file('photo')->store('room_photos', 'public');
-            // Tambahkan path ke data yang akan di-update
             $validatedData['photo_path'] = $path;
         }
 
-        // Hapus key 'photo' dari array sebelum update
         unset($validatedData['photo']);
-
-        // Update record di database
         $room->update($validatedData);
 
-        return redirect()->route('rooms.index')->with('success', 'Room updated successfully.');
+        return redirect()->route('admin.rooms.index')->with('success', 'Room updated successfully.');
     }
 
     /**
@@ -111,13 +100,17 @@ class RoomController extends Controller
      */
     public function destroy(Room $room)
     {
-        // Hapus foto dari storage sebelum menghapus record dari database
-        if ($room->photo_path) {
-            Storage::disk('public')->delete($room->photo_path);
-        }
-
         $room->delete();
+        return redirect()->route('admin.rooms.index')->with('success', 'Room moved to trash.');
+    }
 
-        return redirect()->route('rooms.index')->with('success', 'Room deleted successfully.');
+    /**
+     * Restore the specified resource from storage.
+     */
+    public function restore($id)
+    {
+        $room = Room::withTrashed()->findOrFail($id);
+        $room->restore();
+        return redirect()->route('admin.rooms.index')->with('success', 'Room restored successfully.');
     }
 }

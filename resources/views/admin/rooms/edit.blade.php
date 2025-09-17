@@ -8,20 +8,20 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('rooms.update', $room) }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('admin.rooms.update', $room) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
                         <div>
                             <label for="name">Room Name</label>
-                            <input type="text" id="name" name="name" class="block mt-1 w-full" value="{{ $room->name }}" required>
+                            <input type="text" id="name" name="name" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" value="{{ $room->name }}" required>
                         </div>
                         <div class="mt-4">
                             <label for="description">Description</label>
-                            <textarea id="description" name="description" class="block mt-1 w-full">{{ $room->description }}</textarea>
+                            <textarea id="description" name="description" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm">{{ $room->description }}</textarea>
                         </div>
                         <div class="mt-4">
-                            <label for="price">Price per session/hour</label>
-                            <input type="number" id="price" name="price" step="0.01" class="block mt-1 w-full" value="{{ $room->price }}" required>
+                            <label for="price">Price per day</label>
+                            <input type="number" id="price" name="price" step="0.01" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" value="{{ $room->price }}" required>
                         </div>
                         <div class="mt-4">
                             <label for="photo">New Room Photo (leave blank to keep current)</label>

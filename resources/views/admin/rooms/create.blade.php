@@ -8,19 +8,19 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('rooms.store') }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('admin.rooms.store') }}" enctype="multipart/form-data">
                         @csrf
                         <div>
                             <label for="name">Room Name</label>
-                            <input type="text" id="name" name="name" class="block mt-1 w-full" required>
+                            <input type="text" id="name" name="name" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
                         </div>
                         <div class="mt-4">
                             <label for="description">Description</label>
-                            <textarea id="description" name="description" class="block mt-1 w-full"></textarea>
+                            <textarea id="description" name="description" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm"></textarea>
                         </div>
                         <div class="mt-4">
-                            <label for="price">Price per session/hour</label>
-                            <input type="number" id="price" name="price" step="0.01" class="block mt-1 w-full" required>
+                            <label for="price">Price per day</label>
+                            <input type="number" id="price" name="price" step="0.01" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
                         </div>
                         <div class="mt-4">
                             <label for="photo">Room Photo</label>

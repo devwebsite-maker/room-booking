@@ -9,49 +9,48 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Carbon;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class BookingController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index(Request $request)
     {
-        $query = Booking::with(['user', 'room']);
-
+        $activeBookingsQuery = Booking::with(['user', 'room']);
+        $trashedBookingsQuery = Booking::onlyTrashed()->with(['user', 'room']);
         if (Auth::user()->role === 'admin') {
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-            }
-            if ($request->filled('user_id')) {
-                $query->where('user_id', $request->user_id);
-            }
+            if ($request->filled('status')) { $activeBookingsQuery->where('status', $request->status); }
+            if ($request->filled('user_id')) { $activeBookingsQuery->where('user_id', $request->user_id); }
             $users = User::where('role', 'user')->get();
         } else {
-            $query->where('user_id', Auth::id());
-            $users = collect(); // Kosongkan untuk user biasa
+            $activeBookingsQuery->where('user_id', Auth::id());
+            $trashedBookingsQuery->where('user_id', Auth::id());
+            $users = collect();
         }
-
-        $bookings = $query->latest()->get();
-
+        $activeBookings = $activeBookingsQuery->latest()->get();
+        $trashedBookings = $trashedBookingsQuery->latest()->get();
         return view('bookings.index', [
-            'bookings' => $bookings,
+            'activeBookings' => $activeBookings,
+            'trashedBookings' => $trashedBookings,
             'users' => $users,
-            'statuses' => ['pending', 'confirmed', 'rejected']
+            'statuses' => ['pending', 'confirmed', 'rejected'],
         ]);
     }
 
     public function create()
     {
         $rooms = Room::all();
-        $users = (Auth::user()->role === 'admin') ? User::where('role', 'user')->get() : collect();
+        $users = (Auth::user()->role === 'admin') ? User::where('role', 'user')->latest()->get() : collect();
         return view('bookings.create', compact('rooms', 'users'));
     }
 
     public function store(Request $request)
     {
         $isAdmin = Auth::user()->role === 'admin';
-
         $validated = $request->validate([
-            'room_id' => 'required|exists:rooms,id',
             'user_id' => $isAdmin ? 'required|exists:users,id' : 'nullable',
+            'room_id' => 'required|exists:rooms,id',
             'start_time' => 'required|date|after_or_equal:now',
             'end_time' => [
                 'required', 'date', 'after:start_time',
@@ -73,12 +72,7 @@ class BookingController extends Controller
         $room = Room::findOrFail($validated['room_id']);
         $startTime = Carbon::parse($validated['start_time']);
         $endTime = Carbon::parse($validated['end_time']);
-        
-        $numberOfDays = $startTime->diffInDays($endTime);
-        if ($startTime->diffInMinutes($endTime) % (24 * 60) > 0) {
-            $numberOfDays++;
-        }
-        $numberOfDays = max(1, $numberOfDays);
+        $numberOfDays = max(1, $startTime->diffInDaysFiltered(fn($date) => true, $endTime));
         $totalPrice = $room->price * $numberOfDays;
 
         $path = $request->file('payment_proof')->store('payment_proofs', 'public');
@@ -95,28 +89,77 @@ class BookingController extends Controller
 
         return redirect()->route('bookings.index')->with('success', 'Booking created successfully and is now pending for verification.');
     }
+    
+    public function edit(Booking $booking)
+    {
+        $this->authorize('update', $booking);
+        $rooms = Room::all();
+        $users = (Auth::user()->role === 'admin') ? User::where('role', 'user')->get() : collect();
+        return view('bookings.edit', compact('booking', 'rooms', 'users'));
+    }
+    
+    public function update(Request $request, Booking $booking)
+    {
+        $this->authorize('update', $booking);
+        $isAdmin = Auth::user()->role === 'admin';
+        $validated = $request->validate([
+            'user_id' => $isAdmin ? 'required|exists:users,id' : 'nullable',
+            'room_id' => 'required|exists:rooms,id',
+            'start_time' => 'required|date',
+            'end_time' => [
+                'required', 'date', 'after:start_time',
+                 function ($attribute, $value, $fail) use ($request) {
+                    $startTime = Carbon::parse($request->input('start_time'));
+                    $endTime = Carbon::parse($value);
+                    if ($startTime->diffInHours($endTime) < 24) {
+                        $fail('The minimum booking duration is 24 hours.');
+                    }
+                },
+            ],
+        ]);
 
+        if (Booking::where('room_id', $validated['room_id'])->where('id', '!=', $booking->id)->where(fn($q) => $q->where('start_time', '<', $validated['end_time'])->where('end_time', '>', $validated['start_time']))->exists()) {
+            throw ValidationException::withMessages(['start_time' => 'The selected time slot is not available.']);
+        }
+        
+        $room = Room::findOrFail($validated['room_id']);
+        $startTime = Carbon::parse($validated['start_time']);
+        $endTime = Carbon::parse($validated['end_time']);
+        $numberOfDays = max(1, $startTime->diffInDaysFiltered(fn($date) => true, $endTime));
+        $validated['total_price'] = $room->price * $numberOfDays;
+
+        $booking->update($validated);
+        return redirect()->route('bookings.index')->with('success', 'Booking updated successfully.');
+    }
+
+    public function destroy(Booking $booking)
+    {
+        $this->authorize('delete', $booking);
+        $booking->delete();
+        return redirect()->route('bookings.index')->with('success', 'Booking moved to trash successfully.');
+    }
+    
+    // --- FUNGSI KHUSUS ADMIN ---
+    
     public function verifyView(Booking $booking)
     {
+        $this->authorize('viewAny', Booking::class);
         return view('admin.bookings.verify', compact('booking'));
     }
 
     public function verifyAction(Request $request, Booking $booking)
     {
+        $this->authorize('update', $booking);
         $request->validate(['status' => 'required|in:confirmed,rejected']);
         $booking->update(['status' => $request->status]);
         return redirect()->route('bookings.index')->with('success', 'Booking status has been updated.');
     }
-
-    public function destroy(Booking $booking)
+    
+    public function restore($id)
     {
-        if (Auth::user()->cannot('delete', $booking)) { abort(403); }
-
-        if ($booking->status !== 'pending' && Auth::user()->role !== 'admin') {
-            return redirect()->route('bookings.index')->withErrors('Confirmed booking cannot be canceled.');
-        }
-
-        $booking->delete();
-        return redirect()->route('bookings.index')->with('success', 'Booking canceled successfully.');
+        $booking = Booking::onlyTrashed()->findOrFail($id);
+        $this->authorize('restore', $booking);
+        $booking->restore();
+        return redirect()->route('bookings.index')->with('success', 'Booking restored successfully.');
     }
 }

@@ -12,22 +12,34 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-        {{ __('Dashboard') }}
-    </x-nav-link>
-    <x-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
-        {{ __('My Bookings') }}
-    </x-nav-link>
-   <!-- Cari bagian ini -->
-@if(Auth::user()->role == 'admin')
-    <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
-        {{ __('User Management') }}
-    </x-nav-link>
-    <x-nav-link :href="route('rooms.index')" :active="request()->routeIs('rooms.*')">
-        {{ __('Room Management') }}
-    </x-nav-link>
-@endif
-</div>
+                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                        {{ __('Dashboard') }}
+                    </x-nav-link>
+
+                    {{-- Link Booking untuk semua user --}}
+                    <x-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
+                        {{ Auth::user()->role == 'admin' ? 'All Bookings' : 'My Booking History' }}
+                    </x-nav-link>
+
+                    {{-- Link khusus Admin --}}
+                    @if(Auth::user()->role == 'admin')
+                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                            {{ __('User Management') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('admin.rooms.index')" :active="request()->routeIs('admin.rooms.*')">
+                            {{ __('Room Management') }}
+                        </x-nav-link>
+                        
+                        {{-- =================================== --}}
+                        {{-- INI LINK BARU YANG DITAMBAHKAN --}}
+                        {{-- =================================== --}}
+                        <x-nav-link :href="route('admin.fines.index')" :active="request()->routeIs('admin.fines.*')">
+                            {{ __('Fine Management') }}
+                        </x-nav-link>
+                    @endif
+                </div>
+            </div>
+
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">
@@ -80,6 +92,21 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+             <x-responsive-nav-link :href="route('bookings.index')" :active="request()->routeIs('bookings.*')">
+                {{ Auth::user()->role == 'admin' ? 'All Bookings' : 'My Booking History' }}
+            </x-responsive-nav-link>
+
+            @if(Auth::user()->role == 'admin')
+                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                    {{ __('User Management') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.rooms.index')" :active="request()->routeIs('admin.rooms.*')">
+                    {{ __('Room Management') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.fines.index')" :active="request()->routeIs('admin.fines.*')">
+                    {{ __('Fine Management') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

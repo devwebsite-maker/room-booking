@@ -15,8 +15,13 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::latest()->get();
-        return view('admin.users.index', compact('users'));
+        // Ambil data aktif (yang tidak di-soft-delete)
+        $activeUsers = User::latest()->get();
+        
+        // Ambil HANYA data yang ada di "tong sampah"
+        $trashedUsers = User::onlyTrashed()->latest()->get();
+
+        return view('admin.users.index', compact('activeUsers', 'trashedUsers'));
     }
 
     /**
@@ -46,7 +51,7 @@ class UserController extends Controller
             'role' => $request->role,
         ]);
 
-        return redirect()->route('users.index')->with('success', 'User created successfully.');
+        return redirect()->route('admin.users.index')->with('success', 'User created successfully.');
     }
 
     /**
@@ -77,7 +82,7 @@ class UserController extends Controller
 
         $user->update($data);
 
-        return redirect()->route('users.index')->with('success', 'User updated successfully.');
+        return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
     }
 
     /**
@@ -85,12 +90,21 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        // Mencegah admin menghapus dirinya sendiri
         if (auth()->id() == $user->id) {
-            return redirect()->route('users.index')->withErrors('You cannot delete your own account.');
+            return redirect()->route('admin.users.index')->withErrors('You cannot delete your own account.');
         }
 
         $user->delete();
-        return redirect()->route('users.index')->with('success', 'User deleted successfully.');
+        return redirect()->route('admin.users.index')->with('success', 'User moved to trash.');
+    }
+
+    /**
+     * Restore the specified resource from storage.
+     */
+    public function restore($id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+        return redirect()->route('admin.users.index')->with('success', 'User restored successfully.');
     }
 }

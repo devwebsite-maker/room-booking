@@ -8,12 +8,39 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    {{-- Tampilkan error validasi jika ada --}}
+                    @if ($errors->any())
+                        <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            <strong>Whoops! Something went wrong.</strong>
+                            <ul>
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('bookings.store') }}" enctype="multipart/form-data">
                         @csrf
-                        {{-- ... form untuk admin jika ada ... --}}
+                        
+                        {{-- =============================================== --}}
+                        {{-- BAGIAN BARU: Dropdown User HANYA untuk Admin --}}
+                        {{-- =============================================== --}}
+                        @if(Auth::user()->role == 'admin')
+                            <div class="mt-4">
+                                <label for="user_id" class="block font-medium text-sm text-gray-700">Book for User</label>
+                                <select id="user_id" name="user_id" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
+                                    <option value="">-- Select a User --</option>
+                                    @foreach($users as $user)
+                                        <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+                        
                         <div class="mt-4">
                             <label for="room_id">Select Room</label>
-                            <select id="room_id" name="room_id" class="block mt-1 w-full" required>
+                            <select id="room_id" name="room_id" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
                                 <option value="" data-price="0">-- Choose a room --</option>
                                 @foreach($rooms as $room)
                                     <option value="{{ $room->id }}" data-price="{{ $room->price }}">
@@ -24,11 +51,11 @@
                         </div>
                         <div class="mt-4">
                             <label for="start_time">Check-in Time</label>
-                            <input type="datetime-local" id="start_time" name="start_time" class="block mt-1 w-full" required>
+                            <input type="datetime-local" id="start_time" name="start_time" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
                         </div>
                         <div class="mt-4">
                             <label for="end_time">Check-out Time</label>
-                            <input type="datetime-local" id="end_time" name="end_time" class="block mt-1 w-full" required>
+                            <input type="datetime-local" id="end_time" name="end_time" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
                         </div>
 
                         <div class="mt-6 p-4 bg-gray-100 rounded-lg">
@@ -70,9 +97,8 @@
 
                 if (endTime > startTime) {
                     const timeDifference = endTime.getTime() - startTime.getTime();
-                    // Hitung hari dengan pembulatan ke atas (contoh: 24.5 jam = 2 hari)
                     const days = Math.ceil(timeDifference / (1000 * 60 * 60 * 24));
-                    const total = dailyPrice * Math.max(1, days); // Minimal dihitung 1 hari
+                    const total = dailyPrice * Math.max(1, days);
 
                     priceDisplay.textContent = 'Rp ' + total.toLocaleString('id-ID');
                     return;
