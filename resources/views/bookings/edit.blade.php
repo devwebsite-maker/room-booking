@@ -1,55 +1,37 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Edit Booking') }}
-        </h2>
-    </x-slot>
+{{-- resources/views/bookings/edit.blade.php --}}
+{{-- CATATAN: File ini sekarang adalah partial, bukan halaman penuh --}}
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    @if ($errors->any())
-                        <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                            <strong>Whoops! Something went wrong.</strong>
-                            <ul>
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
+<form method="POST" action="{{ route('bookings.update', $booking) }}" class="space-y-6">
+    @csrf
+    @method('PUT')
 
-                    <form method="POST" action="{{ route('bookings.update', $booking) }}">
-                        @csrf
-                        @method('PUT')
-                        <div>
-                            <label for="room_id" class="block font-medium text-sm text-gray-700">Select Room</label>
-                            <select id="room_id" name="room_id" class="block mt-1 w-full" required>
-                                <option value="">-- Choose a room --</option>
-                                @foreach($rooms as $room)
-                                    <option value="{{ $room->id }}" @if($room->id == $booking->room_id) selected @endif>
-                                        {{ $room->name }} (Capacity: {{ $room->capacity }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mt-4">
-                            <label for="start_time" class="block font-medium text-sm text-gray-700">Start Time</label>
-                            <input type="datetime-local" id="start_time" name="start_time" value="{{ \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d\TH:i') }}" class="block mt-1 w-full" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="end_time" class="block font-medium text-sm text-gray-700">End Time</label>
-                            <input type="datetime-local" id="end_time" name="end_time" value="{{ \Carbon\Carbon::parse($booking->end_time)->format('Y-m-d\TH:i') }}" class="block mt-1 w-full" required>
-                        </div>
-                        <div class="flex items-center justify-end mt-4">
-                            <button type="submit" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                                Update Booking
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+    <div>
+        <label for="edit_room_id" class="block font-semibold text-sm text-slate-600 mb-2">Pilih Kamar</label>
+        <select id="edit_room_id" name="room_id" class="w-full p-3 bg-slate-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition" required>
+            <option value="">-- Pilih salah satu kamar --</option>
+            @foreach($rooms as $room)
+                <option value="{{ $room->id }}" @if($room->id == $booking->room_id) selected @endif>
+                    {{ $room->name }}
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <label for="edit_start_time" class="block font-semibold text-sm text-slate-600 mb-2">Waktu Check-in</label>
+            <input type="datetime-local" id="edit_start_time" name="start_time" value="{{ \Carbon\Carbon::parse($booking->start_time)->format('Y-m-d\TH:i') }}" class="w-full p-3 bg-slate-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition" required>
+        </div>
+        <div>
+            <label for="edit_end_time" class="block font-semibold text-sm text-slate-600 mb-2">Waktu Check-out</label>
+            <input type="datetime-local" id="edit_end_time" name="end_time" value="{{ \Carbon\Carbon::parse($booking->end_time)->format('Y-m-d\TH:i') }}" class="w-full p-3 bg-slate-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition" required>
         </div>
     </div>
-</x-app-layout>
+
+    <div class="pt-4 flex items-center justify-end gap-4">
+        <button type="button" @click="isEditModalOpen = false" class="text-sm font-semibold text-slate-600 hover:text-slate-800">Batal</button>
+        <button type="submit" class="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-900 transition-colors">
+            Perbarui Pesanan
+        </button>
+    </div>
+</form>

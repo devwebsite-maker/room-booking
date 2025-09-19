@@ -1,89 +1,52 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Create a New Booking') }}
-        </h2>
-    </x-slot>
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('bookings.store') }}" enctype="multipart/form-data">
-                        @csrf
-                        {{-- ... form untuk admin jika ada ... --}}
-                        <div class="mt-4">
-                            <label for="room_id">Select Room</label>
-                            <select id="room_id" name="room_id" class="block mt-1 w-full" required>
-                                <option value="" data-price="0">-- Choose a room --</option>
-                                @foreach($rooms as $room)
-                                    <option value="{{ $room->id }}" data-price="{{ $room->price }}">
-                                        {{ $room->name }} (Rp {{ number_format($room->price, 0, ',', '.') }}/day)
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mt-4">
-                            <label for="start_time">Check-in Time</label>
-                            <input type="datetime-local" id="start_time" name="start_time" class="block mt-1 w-full" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="end_time">Check-out Time</label>
-                            <input type="datetime-local" id="end_time" name="end_time" class="block mt-1 w-full" required>
-                        </div>
+{{-- resources/views/bookings/create.blade.php --}}
+{{-- CATATAN: File ini sekarang adalah partial, bukan halaman penuh --}}
 
-                        <div class="mt-6 p-4 bg-gray-100 rounded-lg">
-                            <h3 class="font-bold text-lg">Total Price:</h3>
-                            <p id="total-price-display" class="text-2xl font-bold text-indigo-600">Rp 0</p>
-                        </div>
-                        
-                        <div class="mt-4">
-                            <label for="payment_proof">Upload Payment Proof</label>
-                            <input type="file" id="payment_proof" name="payment_proof" class="block mt-1 w-full" required>
-                        </div>
-                        <div class="flex items-center justify-end mt-4">
-                            <button type="submit" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-800 border rounded-md font-semibold text-xs text-white uppercase">
-                                Book Now
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+<form method="POST" action="{{ route('bookings.store') }}" enctype="multipart/form-data" class="space-y-6">
+    @csrf
+    
+    <div>
+        <label for="create_room_id" class="block font-semibold text-sm text-slate-600 mb-2">Pilih Kamar</label>
+        <select id="create_room_id" name="room_id" class="w-full p-3 bg-slate-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition" required>
+            <option value="" data-price="0">-- Pilih salah satu kamar --</option>
+            @foreach($rooms as $room)
+                <option value="{{ $room->id }}" data-price="{{ $room->price }}">
+                    {{ $room->name }} (Rp {{ number_format($room->price, 0, ',', '.') }}/hari)
+                </option>
+            @endforeach
+        </select>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+            <label for="create_start_time" class="block font-semibold text-sm text-slate-600 mb-2">Waktu Check-in</label>
+            <input type="datetime-local" id="create_start_time" name="start_time" class="w-full p-3 bg-slate-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition" required>
+        </div>
+        <div>
+            <label for="create_end_time" class="block font-semibold text-sm text-slate-600 mb-2">Waktu Check-out</label>
+            <input type="datetime-local" id="create_end_time" name="end_time" class="w-full p-3 bg-slate-100 border-2 border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition" required>
         </div>
     </div>
+
+    <div class="p-4 bg-teal-50 rounded-lg">
+        <h3 class="font-bold text-lg text-slate-800">Estimasi Total Harga:</h3>
+        <p id="total-price-display" class="text-2xl font-bold text-teal-600">Rp 0</p>
+        <p class="text-xs text-slate-500 mt-1">Harga final akan dikonfirmasi oleh admin.</p>
+    </div>
     
-    @push('scripts')
-    <script>
-        const roomSelect = document.getElementById('room_id');
-        const startTimeInput = document.getElementById('start_time');
-        const endTimeInput = document.getElementById('end_time');
-        const priceDisplay = document.getElementById('total-price-display');
+    <div>
+        <label for="payment_proof" class="block font-semibold text-sm text-slate-600 mb-2">Unggah Bukti Pembayaran</label>
+        <input type="file" id="payment_proof" name="payment_proof" class="block w-full text-sm text-slate-500
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-full file:border-0
+            file:text-sm file:font-semibold
+            file:bg-teal-50 file:text-teal-700
+            hover:file:bg-teal-100" required>
+    </div>
 
-        function calculateTotal() {
-            const selectedOption = roomSelect.options[roomSelect.selectedIndex];
-            const dailyPrice = parseFloat(selectedOption.getAttribute('data-price')) || 0;
-            const startTimeValue = startTimeInput.value;
-            const endTimeValue = endTimeInput.value;
-
-            if (dailyPrice > 0 && startTimeValue && endTimeValue) {
-                const startTime = new Date(startTimeValue);
-                const endTime = new Date(endTimeValue);
-
-                if (endTime > startTime) {
-                    const timeDifference = endTime.getTime() - startTime.getTime();
-                    // Hitung hari dengan pembulatan ke atas (contoh: 24.5 jam = 2 hari)
-                    const days = Math.ceil(timeDifference / (1000 * 60 * 60 * 24));
-                    const total = dailyPrice * Math.max(1, days); // Minimal dihitung 1 hari
-
-                    priceDisplay.textContent = 'Rp ' + total.toLocaleString('id-ID');
-                    return;
-                }
-            }
-            priceDisplay.textContent = 'Rp 0';
-        }
-
-        roomSelect.addEventListener('change', calculateTotal);
-        startTimeInput.addEventListener('change', calculateTotal);
-        endTimeInput.addEventListener('change', calculateTotal);
-    </script>
-    @endpush
-</x-app-layout>
+    <div class="pt-4 flex items-center justify-end gap-4">
+        <button type="button" @click="isCreateModalOpen = false" class="text-sm font-semibold text-slate-600 hover:text-slate-800">Batal</button>
+        <button type="submit" class="bg-teal-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-teal-600 transition-colors">
+            Pesan Sekarang
+        </button>
+    </div>
+</form>

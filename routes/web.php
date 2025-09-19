@@ -1,38 +1,60 @@
 <?php
-use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\ProfileController;
+use Illuminate\Support\Facades\Route;
+
+// Controller yang akan kita gunakan
+use App\Http\Controllers\BookingController; 
+use App\Http\Controllers\Admin\RoomController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\RoomController;
-use App\Http\Controllers\BookingController;
 
-// Halaman utama
-Route::get('/', function () { return view('welcome'); });
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
 
-// Dashboard
-Route::get('/dashboard', function () { return view('dashboard'); })->middleware(['auth', 'verified'])->name('dashboard');
+// Rute untuk halaman utama (welcome)
+Route::get('/', function () {
+    return view('welcome');
+});
 
-// Rute yang butuh login
-Route::middleware('auth')->group(function () {
-    // Profile
+// Grup untuk semua rute yang memerlukan login
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Rute Dashboard Utama
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+
+    // Rute Profil Pengguna
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Booking untuk User & Admin
+    // Rute untuk Pemesanan (bisa diakses semua role yang login)
     Route::resource('bookings', BookingController::class)->except(['show']);
+
+
+    // ===================================================================
+    // GRUP ROUTE KHUSUS ADMIN
+    // Semua rute di dalam grup ini hanya bisa diakses oleh admin
+    // URL akan diawali dengan /admin (contoh: /admin/rooms)
+    // Nama route akan diawali dengan admin. (contoh: admin.rooms.index)
+    // ===================================================================
+    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+        
+        // Rute untuk manajemen kamar
+        Route::resource('rooms', RoomController::class);
+
+        // Rute untuk manajemen pengguna
+        Route::resource('users', UserController::class);
+
+        // Rute untuk verifikasi pemesanan
+        Route::get('bookings/{booking}/verify', [BookingController::class, 'verifyView'])->name('bookings.verify');
+        Route::post('bookings/{booking}/verify', [BookingController::class, 'verifyAction']); // Nama tidak wajib jika hanya diakses dari form
+    });
 });
 
-// Rute khusus Admin
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    // CRUD User
-    Route::resource('users', UserController::class);
-
-    // CRUD Ruangan
-    Route::resource('rooms', RoomController::class)->except(['show']);
-
-    // Verifikasi Booking
-    Route::get('/bookings/{booking}/verify', [BookingController::class, 'verifyView'])->name('bookings.verify.view');
-    Route::post('/bookings/{booking}/verify', [BookingController::class, 'verifyAction'])->name('bookings.verify.action');
-});
 
 require __DIR__.'/auth.php';

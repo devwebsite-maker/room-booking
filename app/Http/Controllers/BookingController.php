@@ -7,84 +7,82 @@ use App\Models\Room;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    /**
+     * Menampilkan daftar semua pemesanan (untuk admin) atau pemesanan pengguna.
+     */
     public function index(Request $request)
     {
+        // Siapkan query dasar dengan relasi untuk efisiensi
         $query = Booking::with(['user', 'room']);
 
+        // Ambil data kamar untuk modal 'create'
+        $rooms = Room::orderBy('name')->get();
+        $users = collect(); // Inisialisasi koleksi kosong
+
         if (Auth::user()->role === 'admin') {
+            // Admin bisa filter berdasarkan status dan pengguna
             if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
             if ($request->filled('user_id')) {
                 $query->where('user_id', $request->user_id);
             }
-            $users = User::where('role', 'user')->get();
+            // Admin juga butuh daftar pengguna untuk filter
+            $users = User::where('role', 'user')->orderBy('name')->get();
         } else {
+            // Pengguna biasa hanya bisa melihat pesanannya sendiri
             $query->where('user_id', Auth::id());
-            $users = collect(); // Kosongkan untuk user biasa
         }
 
         $bookings = $query->latest()->get();
+        $statuses = ['pending', 'confirmed', 'rejected'];
 
-        return view('bookings.index', [
-            'bookings' => $bookings,
-            'users' => $users,
-            'statuses' => ['pending', 'confirmed', 'rejected']
-        ]);
+        return view('bookings.index', compact('bookings', 'rooms', 'users', 'statuses'));
     }
 
-    public function create()
-    {
-        $rooms = Room::all();
-        $users = (Auth::user()->role === 'admin') ? User::where('role', 'user')->get() : collect();
-        return view('bookings.create', compact('rooms', 'users'));
-    }
-
+    /**
+     * Menyimpan pemesanan baru dari form modal.
+     */
     public function store(Request $request)
     {
-        $isAdmin = Auth::user()->role === 'admin';
-
         $validated = $request->validate([
             'room_id' => 'required|exists:rooms,id',
-            'user_id' => $isAdmin ? 'required|exists:users,id' : 'nullable',
             'start_time' => 'required|date|after_or_equal:now',
-            'end_time' => [
-                'required', 'date', 'after:start_time',
-                function ($attribute, $value, $fail) use ($request) {
-                    $startTime = Carbon::parse($request->input('start_time'));
-                    $endTime = Carbon::parse($value);
-                    if ($startTime->diffInHours($endTime) < 24) {
-                        $fail('The minimum booking duration is 24 hours.');
-                    }
-                },
-            ],
-            'payment_proof' => 'required|image|max:2048',
+            'end_time' => 'required|date|after:start_time',
+            'payment_proof' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
-        
-        if (Booking::where('room_id', $validated['room_id'])->where(fn($q) => $q->where('start_time', '<', $validated['end_time'])->where('end_time', '>', $validated['start_time']))->exists()) {
-            throw ValidationException::withMessages(['start_time' => 'The selected time slot is not available.']);
+
+        // Validasi ketersediaan kamar
+        $isNotAvailable = Booking::where('room_id', $validated['room_id'])
+            ->where(function ($query) use ($validated) {
+                $query->where('start_time', '<', $validated['end_time'])
+                      ->where('end_time', '>', $validated['start_time']);
+            })
+            ->where('status', 'confirmed') // Hanya cek yang sudah dikonfirmasi
+            ->exists();
+
+        if ($isNotAvailable) {
+            return back()->withErrors(['start_time' => 'Kamar tidak tersedia pada rentang tanggal yang dipilih.'])->withInput();
         }
 
+        // Hitung total harga
         $room = Room::findOrFail($validated['room_id']);
         $startTime = Carbon::parse($validated['start_time']);
         $endTime = Carbon::parse($validated['end_time']);
-        
-        $numberOfDays = $startTime->diffInDays($endTime);
-        if ($startTime->diffInMinutes($endTime) % (24 * 60) > 0) {
-            $numberOfDays++;
-        }
-        $numberOfDays = max(1, $numberOfDays);
-        $totalPrice = $room->price * $numberOfDays;
+        $days = $startTime->diffInDays($endTime) + 1; // Termasuk hari check-in
+        $totalPrice = $room->price * $days;
 
+        // Simpan bukti pembayaran
         $path = $request->file('payment_proof')->store('payment_proofs', 'public');
 
         Booking::create([
-            'user_id' => $isAdmin ? $validated['user_id'] : Auth::id(),
+            'user_id' => Auth::id(),
             'room_id' => $validated['room_id'],
             'start_time' => $validated['start_time'],
             'end_time' => $validated['end_time'],
@@ -93,30 +91,106 @@ class BookingController extends Controller
             'total_price' => $totalPrice,
         ]);
 
-        return redirect()->route('bookings.index')->with('success', 'Booking created successfully and is now pending for verification.');
+        return redirect()->route('bookings.index')->with('success', 'Pemesanan berhasil dibuat & menunggu verifikasi.');
     }
 
-    public function verifyView(Booking $booking)
+    /**
+     * Menampilkan form edit di dalam modal.
+     * Method ini ditambahkan untuk melengkapi alur kerja.
+     */
+    public function edit(Booking $booking)
     {
-        return view('admin.bookings.verify', compact('booking'));
+        // Pastikan pengguna punya izin untuk mengedit (opsional, tergantung kebijakan Anda)
+        $this->authorize('update', $booking);
+        
+        $rooms = Room::orderBy('name')->get();
+        // Return partial view untuk dimuat di modal
+        return view('bookings.edit', compact('booking', 'rooms'));
     }
 
-    public function verifyAction(Request $request, Booking $booking)
+    /**
+     * Memperbarui pemesanan dari form modal edit.
+     * Method ini ditambahkan untuk melengkapi alur kerja.
+     */
+    public function update(Request $request, Booking $booking)
     {
-        $request->validate(['status' => 'required|in:confirmed,rejected']);
-        $booking->update(['status' => $request->status]);
-        return redirect()->route('bookings.index')->with('success', 'Booking status has been updated.');
+        $this->authorize('update', $booking);
+
+        $validated = $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+        ]);
+        
+        // Validasi ketersediaan kamar (tidak termasuk booking saat ini)
+        $isNotAvailable = Booking::where('id', '!=', $booking->id)
+            ->where('room_id', $validated['room_id'])
+            ->where(function ($query) use ($validated) {
+                $query->where('start_time', '<', $validated['end_time'])
+                      ->where('end_time', '>', $validated['start_time']);
+            })
+            ->where('status', 'confirmed')
+            ->exists();
+
+        if ($isNotAvailable) {
+            return back()->withErrors(['start_time' => 'Kamar tidak tersedia pada rentang tanggal yang dipilih.'])->withInput();
+        }
+        
+        // Hitung ulang total harga jika ada perubahan
+        $room = Room::findOrFail($validated['room_id']);
+        $startTime = Carbon::parse($validated['start_time']);
+        $endTime = Carbon::parse($validated['end_time']);
+        $days = $startTime->diffInDays($endTime) + 1;
+        $totalPrice = $room->price * $days;
+
+        $booking->update([
+            'room_id' => $validated['room_id'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
+            'total_price' => $totalPrice,
+            // Admin bisa mengubah status menjadi pending lagi setelah diedit
+            'status' => Auth::user()->role === 'admin' ? 'pending' : $booking->status,
+        ]);
+
+        return redirect()->route('bookings.index')->with('success', 'Pemesanan berhasil diperbarui.');
     }
 
+    /**
+     * Menghapus pemesanan.
+     */
     public function destroy(Booking $booking)
     {
-        if (Auth::user()->cannot('delete', $booking)) { abort(403); }
-
-        if ($booking->status !== 'pending' && Auth::user()->role !== 'admin') {
-            return redirect()->route('bookings.index')->withErrors('Confirmed booking cannot be canceled.');
+        $this->authorize('delete', $booking);
+        
+        // Hapus file bukti pembayaran dari storage
+        if ($booking->payment_proof_path) {
+            Storage::disk('public')->delete($booking->payment_proof_path);
         }
 
         $booking->delete();
-        return redirect()->route('bookings.index')->with('success', 'Booking canceled successfully.');
+
+        return redirect()->route('bookings.index')->with('success', 'Pemesanan berhasil dibatalkan.');
+    }
+
+    /**
+     * (Admin) Menampilkan halaman verifikasi (jika Anda punya halaman terpisah).
+     */
+    public function verifyView(Booking $booking)
+    {
+        $this->authorize('verify', $booking);
+        return view('admin.bookings.verify', compact('booking'));
+    }
+
+    /**
+     * (Admin) Melakukan aksi verifikasi.
+     */
+    public function verifyAction(Request $request, Booking $booking)
+    {
+        $this->authorize('verify', $booking);
+        $request->validate(['status' => ['required', Rule::in(['confirmed', 'rejected'])]]);
+        
+        $booking->update(['status' => $request->status]);
+
+        return redirect()->route('bookings.index')->with('success', 'Status pemesanan telah diperbarui.');
     }
 }
