@@ -1,39 +1,19 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Add New Room') }}
-        </h2>
-    </x-slot>
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('admin.rooms.store') }}" enctype="multipart/form-data">
-                        @csrf
-                        <div>
-                            <label for="name">Room Name</label>
-                            <input type="text" id="name" name="name" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="description">Description</label>
-                            <textarea id="description" name="description" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm"></textarea>
-                        </div>
-                        <div class="mt-4">
-                            <label for="price">Price per day</label>
-                            <input type="number" id="price" name="price" step="0.01" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="photo">Room Photo</label>
-                            <input type="file" id="photo" name="photo" class="block mt-1 w-full" required>
-                        </div>
-                        <div class="flex items-center justify-end mt-4">
-                            <button type="submit" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                                Save Room
-                            </button>
-                        </div>
-                    </form>
+<div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div x-show="showCreateModal" x-transition class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showCreateModal = false"></div>
+        <div x-show="showCreateModal" x-transition class="bg-white dark:bg-gray-800 rounded-lg shadow-xl transform sm:max-w-lg sm:w-full">
+            <form method="POST" action="{{ route('admin.rooms.store') }}" enctype="multipart/form-data" class="p-6">
+                @csrf
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Add New Room</h3>
+                <div><label class="form-label">Room Name</label><input type="text" name="name" class="input-form" required></div>
+                <div class="mt-4"><label class="form-label">Description</label><textarea name="description" class="input-form" rows="4"></textarea></div>
+                <div class="mt-4"><label class="form-label">Price per day</label><input type="number" name="price" step="1000" class="input-form" required></div>
+                <div class="mt-4"><label class="form-label">Room Photo</label><input type="file" name="photo" class="block mt-1 w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" required></div>
+                <div class="mt-6 flex justify-end space-x-4">
+                    <button type="button" @click="showCreateModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Room</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
-</x-app-layout>
+</div>

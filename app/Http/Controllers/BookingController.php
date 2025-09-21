@@ -14,29 +14,38 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class BookingController extends Controller
 {
     use AuthorizesRequests;
-
-    public function index(Request $request)
-    {
-        $activeBookingsQuery = Booking::with(['user', 'room']);
-        $trashedBookingsQuery = Booking::onlyTrashed()->with(['user', 'room']);
-        if (Auth::user()->role === 'admin') {
-            if ($request->filled('status')) { $activeBookingsQuery->where('status', $request->status); }
-            if ($request->filled('user_id')) { $activeBookingsQuery->where('user_id', $request->user_id); }
-            $users = User::where('role', 'user')->get();
-        } else {
-            $activeBookingsQuery->where('user_id', Auth::id());
-            $trashedBookingsQuery->where('user_id', Auth::id());
-            $users = collect();
-        }
-        $activeBookings = $activeBookingsQuery->latest()->get();
-        $trashedBookings = $trashedBookingsQuery->latest()->get();
-        return view('bookings.index', [
-            'activeBookings' => $activeBookings,
-            'trashedBookings' => $trashedBookings,
-            'users' => $users,
-            'statuses' => ['pending', 'confirmed', 'rejected'],
-        ]);
+public function index(Request $request)
+{
+    // ... (kode query yang sudah ada tidak perlu diubah)
+    $activeBookingsQuery = Booking::with(['user', 'room']);
+    $trashedBookingsQuery = Booking::onlyTrashed()->with(['user', 'room']);
+    
+    if (Auth::user()->role === 'admin') {
+        if ($request->filled('status')) { $activeBookingsQuery->where('status', $request->status); }
+        if ($request->filled('user_id')) { $activeBookingsQuery->where('user_id', $request->user_id); }
+        $users = User::where('role', 'user')->get();
+    } else {
+        $activeBookingsQuery->where('user_id', Auth::id());
+        $trashedBookingsQuery->where('user_id', Auth::id());
+        $users = collect();
     }
+    
+    $activeBookings = $activeBookingsQuery->latest()->get();
+    $trashedBookings = $trashedBookingsQuery->latest()->get();
+
+    // ===============================================
+    // TAMBAHKAN BARIS INI
+    // ===============================================
+    $rooms = Room::all(); // Mengambil semua data kamar
+
+    return view('bookings.index', [
+        'activeBookings' => $activeBookings,
+        'trashedBookings' => $trashedBookings,
+        'users' => $users,
+        'statuses' => ['pending', 'confirmed', 'rejected'],
+        'rooms' => $rooms, // <-- DAN TAMBAHKAN DI SINI
+    ]);
+}
 
     public function create()
     {

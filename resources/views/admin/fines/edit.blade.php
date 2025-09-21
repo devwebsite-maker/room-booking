@@ -1,64 +1,36 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Edit Fine for Booking #{{ $fine->booking_id }}
-        </h2>
-    </x-slot>
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <a href="{{ route('admin.fines.index') }}" class="text-indigo-600 hover:underline mb-6 inline-block">&larr; Back to Fines List</a>
-                    <form method="POST" action="{{ route('admin.fines.update', $fine) }}" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
-
-                        <div>
-                            <label for="booking_id">Related Booking</label>
-                            <select name="booking_id" id="booking_id" class="block mt-1 w-full" required>
-                                @foreach($bookings as $booking)
-                                <option value="{{ $booking->id }}" @if($fine->booking_id == $booking->id) selected @endif>
-                                    Booking #{{ $booking->id }} by {{ $booking->user->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="mt-4">
-                            <label for="amount">Amount (Rp)</label>
-                            <input type="number" name="amount" id="amount" class="block mt-1 w-full" value="{{ $fine->amount }}" required>
-                        </div>
-                        
-                        <div class="mt-4">
-                            <label for="reason">Reason</label>
-                            <textarea name="reason" id="reason" class="block mt-1 w-full" required>{{ $fine->reason }}</textarea>
-                        </div>
-                        
-                        <div class="mt-4">
-                            <label for="status">Payment Status</label>
-                            <select name="status" id="status" class="block mt-1 w-full">
-                                <option value="unpaid" @if($fine->status == 'unpaid') selected @endif>Unpaid</option>
-                                <option value="paid" @if($fine->status == 'paid') selected @endif>Paid</option>
-                            </select>
-                        </div>
-
-                        <div class="mt-4">
-                            <label for="payment_proof">Upload New Payment Proof</label>
-                            <input type="file" id="payment_proof" name="payment_proof" class="block mt-1 w-full">
-                            @if($fine->payment_proof_path)
-                                <div class="mt-2">
-                                    <p>Current Proof:</p>
-                                    <img src="{{ asset('storage/' . $fine->payment_proof_path) }}" alt="Payment Proof" class="max-w-xs h-auto border rounded">
-                                </div>
-                            @endif
-                        </div>
-                        
-                        <div class="flex items-center justify-end mt-4">
-                            <button type="submit" class="ml-4 ...">Update Fine</button>
-                        </div>
-                    </form>
+<div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div x-show="showEditModal" x-transition class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showEditModal = false"></div>
+        <div x-show="showEditModal" x-transition class="bg-white dark:bg-gray-800 rounded-lg shadow-xl transform sm:max-w-lg sm:w-full">
+            <form :action="editFormAction" method="POST" enctype="multipart/form-data" class="p-6">
+                @csrf
+                @method('PUT')
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4" x-text="'Edit Fine for Booking #' + editFine.booking_id"></h3>
+                
+                <div>
+                    <label class="form-label">Related Booking</label>
+                    <select name="booking_id" class="input-form" required :value="editFine.booking_id">
+                        @foreach($bookings as $booking)
+                        <option value="{{ $booking->id }}">Booking #{{ $booking->id }} by {{ $booking->user->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
-            </div>
+
+                <div class="mt-4"><label class="form-label">Amount (Rp)</label><input type="number" name="amount" :value="editFine.amount" class="input-form" required></div>
+                <div class="mt-4"><label class="form-label">Reason</label><textarea name="reason" class="input-form" required x-text="editFine.reason"></textarea></div>
+                <div class="mt-4"><label class="form-label">Payment Status</label><select name="status" class="input-form" :value="editFine.status"><option value="unpaid">Unpaid</option><option value="paid">Paid</option></select></div>
+                
+                <div class="mt-4">
+                    <label class="form-label">Upload New Payment Proof</label>
+                    <input type="file" name="payment_proof" class="block mt-1 w-full text-gray-500">
+                    <div class="mt-2" x-show="editFine.payment_proof_path"><p class="text-sm text-gray-500">Current Proof:</p><img :src="'/storage/' + editFine.payment_proof_path" alt="Payment Proof" class="max-w-xs h-auto border rounded"></div>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-4">
+                    <button type="button" @click="showEditModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Update Fine</button>
+                </div>
+            </form>
         </div>
     </div>
-</x-app-layout>
+</div>

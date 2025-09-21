@@ -1,41 +1,23 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Edit Room') }}
-        </h2>
-    </x-slot>
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('admin.rooms.update', $room) }}" enctype="multipart/form-data">
-                        @csrf
-                        @method('PUT')
-                        <div>
-                            <label for="name">Room Name</label>
-                            <input type="text" id="name" name="name" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" value="{{ $room->name }}" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="description">Description</label>
-                            <textarea id="description" name="description" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm">{{ $room->description }}</textarea>
-                        </div>
-                        <div class="mt-4">
-                            <label for="price">Price per day</label>
-                            <input type="number" id="price" name="price" step="0.01" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" value="{{ $room->price }}" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="photo">New Room Photo (leave blank to keep current)</label>
-                            <input type="file" id="photo" name="photo" class="block mt-1 w-full">
-                            <img src="{{ asset('storage/' . $room->photo_path) }}" alt="{{ $room->name }}" class="h-24 w-24 object-cover rounded mt-2">
-                        </div>
-                        <div class="flex items-center justify-end mt-4">
-                            <button type="submit" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                                Update Room
-                            </button>
-                        </div>
-                    </form>
+<div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div x-show="showEditModal" x-transition class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showEditModal = false"></div>
+        <div x-show="showEditModal" x-transition class="bg-white dark:bg-gray-800 rounded-lg shadow-xl transform sm:max-w-lg sm:w-full">
+            <form :action="editFormAction" method="POST" enctype="multipart/form-data" class="p-6">
+                @csrf @method('PUT')
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Edit Room</h3>
+                <div><label class="form-label">Room Name</label><input type="text" name="name" :value="editRoom.name" class="input-form" required></div>
+                <div class="mt-4"><label class="form-label">Description</label><textarea name="description" :value="editRoom.description" class="input-form" rows="4"></textarea></div>
+                <div class="mt-4"><label class="form-label">Price per day</label><input type="number" name="price" step="1000" :value="editRoom.price" class="input-form" required></div>
+                <div class="mt-4">
+                    <label class="form-label">New Photo (leave blank to keep current)</label>
+                    <input type="file" name="photo" class="block mt-1 w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    <div class="mt-2" x-show="editRoom.photo_path"><img :src="'/storage/' + editRoom.photo_path" :alt="editRoom.name" class="h-24 w-24 object-cover rounded-md"></div>
                 </div>
-            </div>
+                <div class="mt-6 flex justify-end space-x-4">
+                    <button type="button" @click="showEditModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Update Room</button>
+                </div>
+            </form>
         </div>
     </div>
-</x-app-layout>
+</div>

@@ -63,8 +63,10 @@ class Arr
 
     /**
      * Get an array item from an array using "dot" notation.
+     *
+     * @return array|null
      */
-    public static function array(ArrayAccess|array $array, string|int|null $key, ?array $default = null): array
+    public static function array(ArrayAccess|array $array, string|int|null $key, ?array $default = null)
     {
         $value = Arr::get($array, $key, $default);
 
@@ -105,12 +107,10 @@ class Arr
 
         foreach ($array as $values) {
             if ($values instanceof Collection) {
-                $values = $values->all();
-            } elseif (! is_array($values)) {
-                continue;
+                $results[] = $values->all();
+            } elseif (is_array($values)) {
+                $results[] = $values;
             }
-
-            $results[] = $values;
         }
 
         return array_merge([], ...$results);
@@ -256,6 +256,10 @@ class Arr
                 return value($default);
             }
 
+            if (is_array($array)) {
+                return array_first($array);
+            }
+
             foreach ($array as $item) {
                 return $item;
             }
@@ -283,7 +287,7 @@ class Arr
     public static function last($array, ?callable $callback = null, $default = null)
     {
         if (is_null($callback)) {
-            return empty($array) ? value($default) : end($array);
+            return empty($array) ? value($default) : array_last($array);
         }
 
         return static::first(array_reverse($array, true), $callback, $default);
@@ -444,7 +448,7 @@ class Arr
         }
 
         if (! str_contains($key, '.')) {
-            return $array[$key] ?? value($default);
+            return value($default);
         }
 
         foreach (explode('.', $key) as $segment) {
@@ -633,7 +637,7 @@ class Arr
         }
 
         if (count($array) === 1) {
-            return end($array);
+            return array_last($array);
         }
 
         $finalItem = array_pop($array);

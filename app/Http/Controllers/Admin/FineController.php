@@ -10,18 +10,25 @@ use Illuminate\Support\Facades\Storage;
 
 class FineController extends Controller
 {
-    public function index()
+     public function index()
     {
         $fines = Fine::with('booking.user', 'booking.room')->latest()->get();
-        return view('admin.fines.index', compact('fines'));
+        
+        // ==========================================================
+        // PERBAIKAN: Ambil juga data booking untuk dikirim ke modal
+        // ==========================================================
+        $bookings = Booking::where('status', 'confirmed')
+                             ->with(['user', 'room'])
+                             ->latest()
+                             ->get();
+
+        // Kirim kedua variabel ($fines dan $bookings) ke view
+        return view('admin.fines.index', compact('fines', 'bookings'));
     }
 
-    public function create()
-    {
-        $bookings = Booking::where('status', 'confirmed')->with('user')->get();
-        return view('admin.fines.create', compact('bookings'));
-    }
-
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -34,12 +41,9 @@ class FineController extends Controller
         return redirect()->route('admin.fines.index')->with('success', 'Fine created successfully.');
     }
 
-    public function edit(Fine $fine)
-    {
-        $bookings = Booking::where('status', 'confirmed')->with('user')->get();
-        return view('admin.fines.edit', compact('fine', 'bookings'));
-    }
-
+    /**
+     * Update the specified resource in storage.
+     */
     public function update(Request $request, Fine $fine)
     {
         $validated = $request->validate([
@@ -51,7 +55,6 @@ class FineController extends Controller
         ]);
 
         $updateData = $validated;
-        // Hapus key 'payment_proof' dari data utama karena tidak ada kolomnya di DB
         unset($updateData['payment_proof']);
 
         if ($request->hasFile('payment_proof')) {
@@ -59,7 +62,6 @@ class FineController extends Controller
                 Storage::disk('public')->delete($fine->payment_proof_path);
             }
             $path = $request->file('payment_proof')->store('fine_proofs', 'public');
-            // Masukkan path ke dalam data yang akan diupdate
             $updateData['payment_proof_path'] = $path;
         }
 
@@ -68,6 +70,9 @@ class FineController extends Controller
         return redirect()->route('admin.fines.index')->with('success', 'Fine updated successfully.');
     }
 
+    /**
+     * Remove the specified resource from storage.
+     */
     public function destroy(Fine $fine)
     {
         if ($fine->payment_proof_path) {
@@ -76,4 +81,5 @@ class FineController extends Controller
         $fine->delete();
         return redirect()->route('admin.fines.index')->with('success', 'Fine deleted successfully.');
     }
+
 }

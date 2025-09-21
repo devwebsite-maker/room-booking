@@ -1,48 +1,21 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Edit User') }}
-        </h2>
-    </x-slot>
-
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('admin.users.update', $user) }}">
-                        @csrf
-                        @method('PUT')
-                        <div>
-                            <label for="name">Name</label>
-                            <input type="text" id="name" name="name" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" value="{{ $user->name }}" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="email">Email</label>
-                            <input type="email" id="email" name="email" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm" value="{{ $user->email }}" required>
-                        </div>
-                        <div class="mt-4">
-                            <label for="password">New Password (leave blank to keep current)</label>
-                            <input type="password" id="password" name="password" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm">
-                        </div>
-                        <div class="mt-4">
-                            <label for="password_confirmation">Confirm New Password</label>
-                            <input type="password" id="password_confirmation" name="password_confirmation" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm">
-                        </div>
-                        <div class="mt-4">
-                            <label for="role">Role</label>
-                            <select name="role" id="role" class="block mt-1 w-full rounded-md border-gray-300 shadow-sm">
-                                <option value="user" @if($user->role == 'user') selected @endif>User</option>
-                                <option value="admin" @if($user->role == 'admin') selected @endif>Admin</option>
-                            </select>
-                        </div>
-                        <div class="flex items-center justify-end mt-4">
-                            <button type="submit" class="ml-4 inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
-                                Update User
-                            </button>
-                        </div>
-                    </form>
+<div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4">
+        <div x-show="showEditModal" x-transition class="fixed inset-0 bg-gray-500 bg-opacity-75" @click="showEditModal = false"></div>
+        <div x-show="showEditModal" x-transition class="bg-white dark:bg-gray-800 rounded-lg shadow-xl transform sm:max-w-lg sm:w-full">
+            <form :action="editFormAction" method="POST" class="p-6">
+                @csrf
+                @method('PUT')
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Edit User</h3>
+                <div><label class="form-label">Name</label><input type="text" name="name" :value="editUser.name" class="input-form" required></div>
+                <div class="mt-4"><label class="form-label">Email</label><input type="email" name="email" :value="editUser.email" class="input-form" required></div>
+                <div class="mt-4"><label class="form-label">New Password (leave blank to keep current)</label><input type="password" name="password" class="input-form"></div>
+                <div class="mt-4"><label class="form-label">Confirm New Password</label><input type="password" name="password_confirmation" class="input-form"></div>
+                <div class="mt-4"><label class="form-label">Role</label><select name="role" class="input-form" :value="editUser.role"><option value="user">User</option><option value="admin">Admin</option></select></div>
+                <div class="mt-6 flex justify-end space-x-4">
+                    <button type="button" @click="showEditModal = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Update User</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
-</x-app-layout>
+</div>
